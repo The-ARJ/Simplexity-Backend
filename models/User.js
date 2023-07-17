@@ -32,6 +32,9 @@ const userSchema = mongoose.Schema({
     image: {
         type: String
     },
+    verificationCode: {
+        type: String
+    }
 }, { timestamps: true })
 
 module.exports = mongoose.model('User', userSchema)

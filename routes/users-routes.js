@@ -17,7 +17,9 @@ router
   .get(verifyUser, userController.getAllUsers)
   .put((req, res) => res.status(501).json({ msg: "Not implemented" }))
   .delete(verifySuperAdmin, userController.deleteAllUsers);
-
+router.route("/forgot-password").post(userController.forgotPassword);
+router.route("/verify-code").post(userController.verifyCode);
+router.route("/reset-password").post(userController.resetPassword);
 router
   .route("/:user_id")
   .get(userController.getUserById)
@@ -28,15 +30,28 @@ router
 router.route("/current/user").get(verifyUser, userController.getCurrentUser);
 
 
+
 router.post("/", upload.single("userImage"), (req, res, next) => {
+  console.log("Received POST request");
+  console.log("req.body:", req.body);
+  console.log("req.file:", req.file);
+
   User.findOne({ email: req.body.email })
     .then((user) => {
+      console.log("User found:", user);
+
       if (user != null) {
+        console.log("Email already exists");
         return res.status(400).json({ error: "Email already exists" });
       }
 
       bcrypt.hash(req.body.password, 10, (err, hash) => {
-        if (err) return next(err);
+        if (err) {
+          // console.log("Error hashing password:", err);
+          return next(err);
+        }
+
+        // console.log("Hashed password:", hash);
 
         const newUser = new User({
           email: req.body.email,
@@ -51,6 +66,8 @@ router.post("/", upload.single("userImage"), (req, res, next) => {
         newUser
           .save()
           .then((user) => {
+            // console.log("User saved in database:", user);
+
             const data = {
               id: user._id,
               email: user.email,
@@ -60,12 +77,14 @@ router.post("/", upload.single("userImage"), (req, res, next) => {
               role: user.role,
               image: user.image,
             };
+
+            // console.log("Returning response");
             return res
               .status(201)
               .json({ status: "User registration success.", data });
           })
           .catch((err) => {
-            console.log(err);
+            console.log("Error saving user in database:", err);
             return res
               .status(400)
               .json({ error: "Error saving user in database" });
@@ -73,9 +92,11 @@ router.post("/", upload.single("userImage"), (req, res, next) => {
       });
     })
     .catch((err) => {
+      console.log("Server error:", err);
       return res.status(500).json({ error: "Server Error" });
     });
 });
+
 router.post("/login/user", (req, res, next) => {
   const { email, password } = req.body;
 
@@ -86,7 +107,7 @@ router.post("/login/user", (req, res, next) => {
     .then((user) => {
       if (!user) {
         console.log("User not found for email:", email);
-        return res.status(401).json({ error: "Invalid credentials" });
+        return res.status(401).json({ error: "Incorrect Email Address" });
       }
 
       bcrypt.compare(password, user.password, (err, isMatch) => {
@@ -96,7 +117,7 @@ router.post("/login/user", (req, res, next) => {
         }
         if (!isMatch) {
           console.log("Invalid password for email:", email);
-          return res.status(401).json({ error: "Invalid credentials" });
+          return res.status(401).json({ error: "Incorrect Password" });
         }
 
         const data = {
@@ -114,6 +135,7 @@ router.post("/login/user", (req, res, next) => {
       return res.status(500).json({ error: "Server Error" });
     });
 });
+
 
 
 

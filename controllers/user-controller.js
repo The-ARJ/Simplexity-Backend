@@ -1,4 +1,7 @@
 const User = require("../models/User");
+const sendVerificationCodeToMail = require('../middleware/email');
+const generateVerificationCode = require('./verificationcode.js');
+const bcrypt = require("bcryptjs");
 const getAllUsers = (req, res, next) => {
   User.find()
     .then((user) => {
@@ -13,7 +16,7 @@ const getAllUsers = (req, res, next) => {
     });
 };
 const getCurrentUser = (req, res) => {
-  const userId = req.user.id; 
+  const userId = req.user.id;
 
   User.findById(userId)
     .then((user) => {
@@ -169,6 +172,106 @@ const deleteUserById = (req, res, next) => {
     });
 };
 
+
+
+
+
+
+
+
+
+const forgotPassword = async (req, res, next) => {
+  const { email } = req.body;
+  console.log(email)
+  try {
+    // Generate a verification code
+    const verificationCode = generateVerificationCode();
+
+    // Save the verification code in the database
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json('User not found');
+    }
+    user.verificationCode = verificationCode;
+    await user.save();
+
+    // Send the verification code to the user's mail
+    sendVerificationCodeToMail(email, verificationCode);
+
+    // console.log("Generated verification code:", verificationCode);
+    return res.status(200).json({ message: 'Verification code sent successfully', verificationCode });
+  } catch (error) {
+    console.log(error)
+    next(error);
+  }
+};
+
+
+
+const verifyCode = (req, res, next) => {
+  const { email, verificationCode } = req.body;
+  console.log(verificationCode)
+  User.findOne({ email })
+    .then((user) => {
+      if (!user) {
+        return res.status(404).json('User not found');
+
+      }
+      console.log("user  found", user)
+
+      if (user.verificationCode !== verificationCode) {
+        console.log(user.verificationCode)
+        return res.status(400).json('Invalid verification code');
+      }
+
+      res.status(200).json({ message: 'Code is correct', verificationCode: user.verificationCode });
+    })
+    .catch((error) => {
+      console.log(error)
+      res.status(500).json('Failed to verify code');
+    });
+};
+
+
+const saltRounds = 10;  // You can adjust this number based on your security requirements
+
+const resetPassword = (req, res, next) => {
+  const { email, verificationCode, newPassword } = req.body;
+
+  User.findOne({ email })
+    .then((user) => {
+      if (!user) {
+        return res.status(404).json('User not found');
+      }
+
+      if (user.verificationCode !== verificationCode) {
+        return res.status(400).json('Invalid verification code');
+      }
+
+      // Hash the new password
+      return bcrypt.hash(newPassword, saltRounds)
+        .then((hashedPassword) => {
+          user.password = hashedPassword;
+          user.verificationCode = null;
+          return user.save();
+        })
+        .then((updatedUser) => {
+          // Delete the verificationCode from the user document
+          return User.updateOne({ _id: updatedUser._id }, { $unset: { verificationCode: 1 } });
+        })
+        .then(() => {
+          res.status(200).json({ message: 'Password reset successfully' });
+        })
+        .catch((error) => {
+          res.status(500).json('Failed to reset password');
+        });
+    })
+    .catch((error) => {
+      res.status(500).json({ message: 'An error occurred', error: error });
+    });
+};
+
+
 module.exports = {
   getAllUsers,
   deleteAllUsers,
@@ -177,4 +280,7 @@ module.exports = {
   deleteUserById,
   getCurrentUser,
   updatePassword,
+  forgotPassword,
+  verifyCode,
+  resetPassword
 };
