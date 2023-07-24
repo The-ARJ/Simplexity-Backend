@@ -23,16 +23,22 @@ const getCurrentUser = (req, res) => {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // Include the isOnline status in the response
       res.status(200).json({
         success: true,
         message: "Current user retrieved successfully",
-        data: user,
+        data: {
+          ...user.toJSON(),
+          isOnline: user.isOnline,
+        },
       });
     })
     .catch((error) => {
       res.status(500).json({ message: "Error retrieving current user", error });
     });
 };
+
 
 
 const deleteAllUsers = (req, res, next) => {
@@ -270,6 +276,25 @@ const resetPassword = (req, res, next) => {
       res.status(500).json({ message: 'An error occurred', error: error });
     });
 };
+const logoutUser = async (req, res, next) => {
+  const userId = req.user.id;
+  console.log(userId)
+  try {
+    const user = await User.findByIdAndUpdate(userId, { isOnline: false });
+    console.log(user)
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ message: "User logged out successfully" });
+  } catch (error) {
+    console.log(err)
+
+    res.status(500).json({ message: "Error logging out user", error });
+  }
+};
+
 
 
 module.exports = {
@@ -282,5 +307,6 @@ module.exports = {
   updatePassword,
   forgotPassword,
   verifyCode,
-  resetPassword
+  resetPassword,
+  logoutUser
 };

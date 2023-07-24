@@ -34,6 +34,10 @@ const userSchema = mongoose.Schema({
     },
     verificationCode: {
         type: String
+    },
+    isOnline: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true })
 

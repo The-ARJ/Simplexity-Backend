@@ -1,27 +1,18 @@
 const Product = require("../models/ProductSchema");
 
 const getAllProducts = (req, res, next) => {
-  const userId = req.user.id; // Assuming you have the authenticated user's ID available in req.user.id
-  const userRole = req.user.role; // Assuming you have the user's role available in req.user.role
-
-  let query = {};
-
-  if (userRole !== 'admin') {
-    query = { owner: userId };
-  }
-
-  Product.find(query)
-    .then((complaints) => {
+  Product.find({})
+    .then((products) => {
       res.status(200).json({
         success: true,
-        message: "Complaints retrieved successfully",
-        data: complaints,
+        message: "Products retrieved successfully",
+        data: products,
       });
     })
     .catch((error) => {
       res.status(500).json({
         success: false,
-        message: "Error retrieving complaints",
+        message: "Error retrieving products",
         error,
       });
     });
@@ -64,7 +55,6 @@ const updateProductById = (req, res, next) => {
       product.price = req.body.price || product.price;
       product.quantity = req.body.quantity || product.quantity;
       product.category = req.body.category || product.category;
-      product.brand = req.body.brand || product.brand;
 
       if (req.file) {
         product.image = "/product_images/" + req.file.filename;
@@ -80,7 +70,6 @@ const updateProductById = (req, res, next) => {
             price: updatedProduct.price,
             quantity: updatedProduct.quantity,
             category: updatedProduct.category,
-            brand: updatedProduct.brand,
             image: updatedProduct.image,
           };
           return res.json({
