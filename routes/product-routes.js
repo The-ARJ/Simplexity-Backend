@@ -6,7 +6,7 @@ const { verifyUser, verifyAdmin } = require("../middleware/auth");
 
 router
     .route("/")
-    .get(verifyUser, productController.getAllProducts)
+    .get(productController.getAllProducts)
     .post(verifyUser, upload.single("productImage"), productController.createProduct)
     .put((req, res) => res.status(501).json({ msg: "Not implemented" }))
     .delete(verifyAdmin,productController.deleteAllProducts);

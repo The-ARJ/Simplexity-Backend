@@ -38,7 +38,8 @@ const userSchema = mongoose.Schema({
     isOnline: {
         type: Boolean,
         default: false
-    }
+    },
+
 }, { timestamps: true })
 
 module.exports = mongoose.model('User', userSchema)

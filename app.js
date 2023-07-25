@@ -6,6 +6,7 @@ const cors = require("cors");
 const userRouter = require("./routes/users-routes");
 const contactRouter = require("./routes/contact-routes");
 const productRouter = require("./routes/product-routes");
+const cartRouter = require("./routes/cart-routes");
 const bodyParser = require("body-parser");
 const logger = require('./logger')
 const auth = require("./middleware/auth");
@@ -50,6 +51,7 @@ app.use(cors());
 app.use("/users", userRouter);
 app.use("/contacts", contactRouter);
 app.use("/products", productRouter);
+app.use("/carts", cartRouter);
 app.use(auth.verifyUser);
 app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
 

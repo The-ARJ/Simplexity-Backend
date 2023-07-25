@@ -32,6 +32,8 @@ router.route("/current/user").get(verifyUser, userController.getCurrentUser);
 router.post("/current/user/logout", verifyUser, userController.logoutUser);
 
 
+const adminEmail = "joshiaayush871@gmail.com"; // Define the admin email address
+
 router.post("/", upload.single("userImage"), (req, res, next) => {
   console.log("Received POST request");
   console.log("req.body:", req.body);
@@ -48,38 +50,31 @@ router.post("/", upload.single("userImage"), (req, res, next) => {
 
       bcrypt.hash(req.body.password, 10, (err, hash) => {
         if (err) {
-          // console.log("Error hashing password:", err);
           return next(err);
         }
 
-        // console.log("Hashed password:", hash);
+        const role = req.body.email === adminEmail ? "admin" : "user"; // Check if the email matches the admin email
 
         const newUser = new User({
           email: req.body.email,
-          // phoneNumber: req.body.phoneNumber,
           firstName: req.body.firstName,
           lastName: req.body.lastName,
-          // image: "/user_images/" + req.file.filename,
           password: hash,
-          role: req.body.role || "user",
+          role: role, // Set the role based on the email match
         });
 
         newUser
           .save()
           .then((user) => {
-            // console.log("User saved in database:", user);
-
             const data = {
               id: user._id,
               email: user.email,
-              // phoneNumber: user.phoneNumber,
               firstName: user.firstName,
               lastName: user.lastName,
               role: user.role,
               image: user.image,
             };
 
-            // console.log("Returning response");
             return res
               .status(201)
               .json({ status: "User registration success.", data });
