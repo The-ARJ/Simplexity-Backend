@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const LoginAttempt = require("../models/LoginAttemptSchema");
 
 const router = express.Router();
 const upload = require("../middleware/upload");
@@ -48,7 +49,18 @@ router.post("/", upload.single("userImage"), (req, res, next) => {
         return res.status(400).json({ error: "Email already exists" });
       }
 
-      bcrypt.hash(req.body.password, 10, (err, hash) => {
+      const { firstName, lastName, password } = req.body;
+      if (
+        firstName &&
+        lastName &&
+        (password.toLowerCase().includes(firstName.toLowerCase()) ||
+          password.toLowerCase().includes(lastName.toLowerCase()))
+      ) {
+        console.log("Password cannot contain your name");
+        return res.status(400).json({ error: "Password cannot contain your name" });
+      }
+
+      bcrypt.hash(password, 10, (err, hash) => {
         if (err) {
           return next(err);
         }
@@ -57,8 +69,8 @@ router.post("/", upload.single("userImage"), (req, res, next) => {
 
         const newUser = new User({
           email: req.body.email,
-          firstName: req.body.firstName,
-          lastName: req.body.lastName,
+          firstName,
+          lastName,
           password: hash,
           role: role, // Set the role based on the email match
         });
@@ -69,8 +81,8 @@ router.post("/", upload.single("userImage"), (req, res, next) => {
             const data = {
               id: user._id,
               email: user.email,
-              firstName: user.firstName,
-              lastName: user.lastName,
+              firstName,
+              lastName,
               role: user.role,
               image: user.image,
             };
@@ -93,6 +105,7 @@ router.post("/", upload.single("userImage"), (req, res, next) => {
     });
 });
 
+
 router.post("/login/user", (req, res, next) => {
   const { email, password } = req.body;
 
@@ -103,32 +116,86 @@ router.post("/login/user", (req, res, next) => {
         return res.status(401).json({ error: "Incorrect Email Address" });
       }
 
-      bcrypt.compare(password, user.password, (err, isMatch) => {
-        if (err) {
-          return next(err);
-        }
-        if (!isMatch) {
-          return res.status(401).json({ error: "Incorrect Password" });
-        }
+      // Check if the account is locked due to too many failed login attempts
+      LoginAttempt.find({ email, isSuccess: false })
+        .sort({ timestamp: -1 }) // Sort by timestamp in descending order to get the latest failed attempt first
+        .limit(5) // Adjust the limit based on your requirements
+        .then((failedAttempts) => {
+          const failedAttemptsCount = failedAttempts.length;
+          const allowedAttempts = 5; // Define the maximum number of allowed failed attempts
+          const lockoutDurationInMinutes = 1; // Define the lockout duration in minutes
 
-        // Set user online status to true upon successful login
-        user.isOnline = true;
-        user.save();
+          if (failedAttemptsCount >= allowedAttempts) {
+            const lastFailedAttempt = failedAttempts[0]; // Get the latest failed attempt
+            const now = new Date();
+            const lockoutTime = new Date(lastFailedAttempt.timestamp);
+            lockoutTime.setMinutes(lockoutTime.getMinutes() + lockoutDurationInMinutes);
+            const remainingLockoutTimeInMs = lockoutTime - now;
 
-        const data = {
-          id: user._id,
-          email: user.email,
-          role: user.role,
-        };
-        const token = jwt.sign(data, process.env.SECRET, { expiresIn: "1y" });
-        return res.json({ status: "Login Success", token });
-      });
+            if (now < lockoutTime) {
+              // Account is still locked. Return an error with remaining lockout time.
+              return res.status(401).json({
+                error: "Too many failed login attempts. Please try again after some time.",
+                remainingLockoutTime: remainingLockoutTimeInMs,
+              });
+            } else {
+              // If lockout time has passed, delete the previous failed login attempts
+              LoginAttempt.deleteMany({ email, isSuccess: false }).catch((err) => {
+                console.log("Error deleting login attempts:", err);
+              });
+            }
+          }
+
+          bcrypt.compare(password, user.password, (err, isMatch) => {
+            if (err) {
+              return next(err);
+            }
+
+            if (!isMatch) {
+              // Log the failed login attempt
+              const loginAttempt = new LoginAttempt({
+                email,
+                isSuccess: false,
+              });
+              loginAttempt.save();
+
+              // Calculate the remaining login attempts and add it to the response
+              const remainingAttempts = allowedAttempts - failedAttemptsCount;
+
+              return res.status(401).json({
+                error: "Incorrect Password",
+                remainingAttempts,
+              });
+            }
+
+            // Reset the failed login attempts upon successful login
+            LoginAttempt.deleteMany({ email, isSuccess: false })
+              .then(() => {
+                // Set user online status to true upon successful login
+                user.isOnline = true;
+                user.save();
+
+                const data = {
+                  id: user._id,
+                  email: user.email,
+                  role: user.role,
+                };
+                const token = jwt.sign(data, process.env.SECRET, { expiresIn: "1y" });
+                return res.json({ status: "Login Success", token });
+              })
+              .catch((err) => {
+                return res.status(500).json({ error: "Server Error" });
+              });
+          });
+        })
+        .catch((err) => {
+          return res.status(500).json({ error: "Server Error" });
+        });
     })
     .catch((err) => {
       return res.status(500).json({ error: "Server Error" });
     });
 });
-
 
 
 

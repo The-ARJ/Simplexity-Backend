@@ -180,12 +180,6 @@ const deleteUserById = (req, res, next) => {
 
 
 
-
-
-
-
-
-
 const forgotPassword = async (req, res, next) => {
   const { email } = req.body;
   console.log(email)
@@ -255,15 +249,12 @@ const resetPassword = (req, res, next) => {
       }
 
       // Hash the new password
-      return bcrypt.hash(newPassword, saltRounds)
+      return bcrypt
+        .hash(newPassword, saltRounds)
         .then((hashedPassword) => {
           user.password = hashedPassword;
-          user.verificationCode = null;
+          user.verificationCode = null; // Remove the verification code from the user document
           return user.save();
-        })
-        .then((updatedUser) => {
-          // Delete the verificationCode from the user document
-          return User.updateOne({ _id: updatedUser._id }, { $unset: { verificationCode: 1 } });
         })
         .then(() => {
           res.status(200).json({ message: 'Password reset successfully' });
@@ -276,6 +267,7 @@ const resetPassword = (req, res, next) => {
       res.status(500).json({ message: 'An error occurred', error: error });
     });
 };
+
 const logoutUser = async (req, res, next) => {
   const userId = req.user.id;
   console.log(userId)
