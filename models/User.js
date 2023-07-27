@@ -30,7 +30,8 @@ const userSchema = mongoose.Schema({
         default: 'user'
     },
     image: {
-        type: String
+        type: String,
+        default: '/user_images/user.jpg'
     },
     verificationCode: {
         type: String
@@ -38,6 +39,14 @@ const userSchema = mongoose.Schema({
     isOnline: {
         type: Boolean,
         default: false
+    },
+    lastPasswordChange: {
+        type: Date,
+        default: Date.now,
+    },
+    isVerified: {
+        type: Boolean,
+        default: false,
     },
 
 }, { timestamps: true })

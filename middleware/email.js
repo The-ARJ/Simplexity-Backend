@@ -19,7 +19,7 @@ async function sendVerificationCodeToEmail(email, verificationCode) {
         const mailOptions = {
             from: process.env.EMAIL_ADDRESS,
             to: email,
-            subject: 'Password Reset Verification Code',
+            subject: 'Verification Code',
             text: `Your verification code is: ${verificationCode}`,
         };
 

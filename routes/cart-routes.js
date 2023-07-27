@@ -17,4 +17,6 @@ router
     .put(verifyUser, cartController.updateCartProduct)
     .delete(verifyUser, cartController.removeFromCart);
 
+router.post('/product/buy', verifyUser, cartController.buyFromCart);
+
 module.exports = router;

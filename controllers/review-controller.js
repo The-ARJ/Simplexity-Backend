@@ -24,7 +24,7 @@ const getReviewsByProduct = (req, res, next) => {
     const productId = req.params.product_id; // Assuming you pass the product ID in the URL
 
     Review.find({ product: productId })
-        .populate("user", "firstName lastName email image")
+        .populate("user", "firstName lastName email image isVerified isOnline")
         .populate("product", "name")
         .then((reviews) => {
             res.status(200).json({

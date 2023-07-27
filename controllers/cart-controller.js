@@ -101,9 +101,50 @@ const removeFromCart = (req, res, next) => {
         });
 };
 
+const buyFromCart = (req, res, next) => {
+    Cart.findOne({ user: req.user.id })
+        .populate('products.product')
+        .then((cart) => {
+            if (!cart) {
+                return res.status(404).json({ error: "Cart not found" });
+            }
+
+            // Mark products as bought and update their quantity
+            cart.products.forEach((cartItem) => {
+                const product = cartItem.product;
+                if (product.quantity >= cartItem.quantity) {
+                    product.quantity -= cartItem.quantity;
+                    product.isBought = true;
+                    product.boughtBy = req.user.id; // Set the user ID who bought the product
+                } else {
+                    return res.status(400).json({ error: "Insufficient product quantity" });
+                }
+            });
+
+            // Save the updated products
+            const productUpdates = cart.products.map((cartItem) => cartItem.product.save());
+
+            // Clear the cart
+            cart.products = [];
+            cart.totalAmount = 0;
+
+            // Save the cart and wait for all product updates to complete
+            return Promise.all([cart.save(), ...productUpdates]);
+        })
+        .then(([cart, ...updatedProducts]) => {
+            res.json({ message: "Purchase successful", data: cart });
+        })
+        .catch((error) => {
+            res.status(500).json({ message: "Error processing purchase", error });
+        });
+};
+
+
+
 module.exports = {
     getCart,
     addToCart,
     updateCartProduct,
     removeFromCart,
+    buyFromCart
 };
