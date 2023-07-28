@@ -9,7 +9,7 @@ const ReviewSchema = mongoose.Schema({
     product: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Product',
-        // required: true,
+        required: true,
     },
     rating: {
         type: Number,
@@ -18,6 +18,7 @@ const ReviewSchema = mongoose.Schema({
     },
     text: {
         type: String,
+        required: true,
     },
 }, { timestamps: true });
 
