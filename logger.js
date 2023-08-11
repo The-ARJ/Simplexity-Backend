@@ -13,7 +13,6 @@ const log = (msg) => {
     }
     fs.appendFile(path.join(__dirname, 'logs', 'audit-logs.txt'), logItem, (err) => {
         if (err) console.log(err)
-
     })
 }
 

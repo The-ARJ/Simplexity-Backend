@@ -37,33 +37,39 @@ const getAllUsers = (req, res, next) => {
       res.status(500).json({ message: "Error retrieving users", error });
     });
 };
-const registerUser = (req, res, next) => {
-  console.log("Received POST request");
-  console.log("req.body:", req.body);
-  console.log("req.file:", req.file);
 
+const registerUser = (req, res, next) => {
   User.findOne({ email: req.body.email })
     .then((user) => {
       console.log("User found:", user);
 
       if (user != null) {
-        console.log("Email already exists");
         return res.status(400).json({ error: "Email already exists" });
       }
 
-      const { firstName, lastName, password } = req.body;
+      const { email, firstName, lastName, password } = req.body;
+      const lowerCasePassword = password.toLowerCase();
+      const lowerCaseFName = firstName.toLowerCase().replace(/\s+/g, ''); // Remove spaces from first name
+      const lowerCaseLName = lastName.toLowerCase().replace(/\s+/g, ''); // Remove spaces from last name
+      const lowerCaseEmail = email.toLowerCase();
+
       if (
-        firstName &&
-        lastName &&
-        (password.toLowerCase().includes(firstName.toLowerCase()) ||
-          password.toLowerCase().includes(lastName.toLowerCase()))
+        lowerCasePassword.includes(lowerCaseFName) ||
+        lowerCasePassword.includes(lowerCaseLName) ||
+        lowerCasePassword.includes(lowerCaseEmail)
       ) {
-        console.log("Password cannot contain your name");
-        return res.status(400).json({ error: "Password cannot contain your name" });
+        return res.status(400).json({ error: "Password cannot contain your name or email" });
+      }
+
+      // Check if the password contains any individual word from the user's name
+      const nameWords = lowerCaseFName.split(' ');
+      for (const word of nameWords) {
+        if (lowerCasePassword.includes(word)) {
+          return res.status(400).json({ error: "Password cannot contain your name or email" });
+        }
       }
 
       if (!isPasswordValid(password)) {
-        console.log("Password does not meet the criteria");
         return res.status(400).json({ error: "Password does not meet the criteria" });
       }
 
@@ -101,44 +107,38 @@ const registerUser = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log("Server error:", err);
       return res.status(500).json({ error: "Server Error" });
     });
 };
 
 const loginUser = (req, res, next) => {
   const { email, password } = req.body;
-  // Find user by email
   User.findOne({ email })
     .then((user) => {
       if (!user) {
         return res.status(401).json({ error: "Incorrect Email Address" });
       }
-
-      // Check if the account is locked due to too many failed login attempts
       LoginAttempt.find({ email, isSuccess: false })
-        .sort({ timestamp: -1 }) // Sort by timestamp in descending order to get the latest failed attempt first
-        .limit(5) // Adjust the limit based on your requirements
+        .sort({ timestamp: -1 })
+        .limit(5)
         .then((failedAttempts) => {
           const failedAttemptsCount = failedAttempts.length;
-          const allowedAttempts = 5; // Define the maximum number of allowed failed attempts
-          const lockoutDurationInMinutes = 1; // Define the lockout duration in minutes
+          const allowedAttempts = 5;
+          const lockoutDurationInMinutes = 1;
 
           if (failedAttemptsCount >= allowedAttempts) {
-            const lastFailedAttempt = failedAttempts[0]; // Get the latest failed attempt
+            const lastFailedAttempt = failedAttempts[0];
             const now = new Date();
             const lockoutTime = new Date(lastFailedAttempt.timestamp);
             lockoutTime.setMinutes(lockoutTime.getMinutes() + lockoutDurationInMinutes);
             const remainingLockoutTimeInMs = lockoutTime - now;
 
             if (now < lockoutTime) {
-              // Account is still locked. Return an error with remaining lockout time.
               return res.status(401).json({
                 error: "Too many failed login attempts. Please try again after some time.",
                 remainingLockoutTime: remainingLockoutTimeInMs,
               });
             } else {
-              // If lockout time has passed, delete the previous failed login attempts
               LoginAttempt.deleteMany({ email, isSuccess: false }).catch((err) => {
                 console.log("Error deleting login attempts:", err);
               });
@@ -158,7 +158,6 @@ const loginUser = (req, res, next) => {
               });
               loginAttempt.save();
 
-              // Calculate the remaining login attempts and add it to the response
               const remainingAttempts = allowedAttempts - failedAttemptsCount;
 
               return res.status(401).json({
@@ -170,21 +169,17 @@ const loginUser = (req, res, next) => {
             // Reset the failed login attempts upon successful login
             LoginAttempt.deleteMany({ email, isSuccess: false })
               .then(() => {
-                // Set user online status to true upon successful login
                 user.isOnline = true;
-                // If the login is successful and the user is verified, assign the "admin" role (if applicable)
                 if (user.isVerified && user.email === adminEmail) {
                   user.role = "admin";
                 }
                 user.save();
-
-                // Return the response with the token and user data
                 const data = {
                   id: user._id,
                   email: user.email,
                   role: user.role,
                 };
-                const token = jwt.sign(data, process.env.SECRET, { expiresIn: "1y" });
+                const token = jwt.sign(data, process.env.SECRET, { expiresIn: "30d" });
                 return res.json({ status: "Login Success", token });
               })
               .catch((err) => {
