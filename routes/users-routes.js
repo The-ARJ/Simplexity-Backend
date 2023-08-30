@@ -10,10 +10,11 @@ const {
   verifySuperAdmin,
 } = require("../middleware/auth");
 const userController = require("../controllers/user-controller");
+const authController = require("../controllers/auth-controller");
 const checkLastPasswordChange = require("../middleware/passwordChangePrompt");
 
 router.post("/", upload.single("userImage"), userController.registerUser)
-router.post("/login/user", userController.loginUser);
+router.post("/login/user",  authController.loginUser);
 router.route("/current/user").get(verifyUser, checkLastPasswordChange, userController.getCurrentUser);
 router.post("/current/user/logout", verifyUser, userController.logoutUser);
 

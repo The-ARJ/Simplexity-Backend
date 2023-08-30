@@ -111,93 +111,6 @@ const registerUser = (req, res, next) => {
     });
 };
 
-const loginUser = (req, res, next) => {
-  const { email, password } = req.body;
-  User.findOne({ email })
-    .then((user) => {
-      if (!user) {
-        return res.status(401).json({ error: "Incorrect Email Address" });
-      }
-      LoginAttempt.find({ email, isSuccess: false })
-        .sort({ timestamp: -1 })
-        .limit(5)
-        .then((failedAttempts) => {
-          const failedAttemptsCount = failedAttempts.length;
-          const allowedAttempts = 5;
-          const lockoutDurationInMinutes = 1;
-
-          if (failedAttemptsCount >= allowedAttempts) {
-            const lastFailedAttempt = failedAttempts[0];
-            const now = new Date();
-            const lockoutTime = new Date(lastFailedAttempt.timestamp);
-            lockoutTime.setMinutes(lockoutTime.getMinutes() + lockoutDurationInMinutes);
-            const remainingLockoutTimeInMs = lockoutTime - now;
-
-            if (now < lockoutTime) {
-              return res.status(401).json({
-                error: "Too many failed login attempts. Please try again after some time.",
-                remainingLockoutTime: remainingLockoutTimeInMs,
-              });
-            } else {
-              LoginAttempt.deleteMany({ email, isSuccess: false }).catch((err) => {
-                console.log("Error deleting login attempts:", err);
-              });
-            }
-          }
-
-          bcrypt.compare(password, user.password, (err, isMatch) => {
-            if (err) {
-              return next(err);
-            }
-
-            if (!isMatch) {
-              // Log the failed login attempt
-              const loginAttempt = new LoginAttempt({
-                email,
-                isSuccess: false,
-              });
-              loginAttempt.save();
-
-              const remainingAttempts = allowedAttempts - failedAttemptsCount;
-
-              return res.status(401).json({
-                error: "Incorrect Password",
-                remainingAttempts,
-              });
-            }
-
-            // Reset the failed login attempts upon successful login
-            LoginAttempt.deleteMany({ email, isSuccess: false })
-              .then(() => {
-                user.isOnline = true;
-                if (user.isVerified && user.email === adminEmail) {
-                  user.role = "admin";
-                }
-                user.save();
-                const data = {
-                  id: user._id,
-                  email: user.email,
-                  role: user.role,
-                };
-                const token = jwt.sign(data, process.env.SECRET, { expiresIn: "30d" });
-                return res.json({ status: "Login Success", token });
-              })
-              .catch((err) => {
-                return res.status(500).json({ error: "Server Error" });
-              });
-          });
-        })
-        .catch((err) => {
-          return res.status(500).json({ error: "Server Error" });
-        });
-    })
-    .catch((err) => {
-      return res.status(500).json({ error: "Server Error" });
-    });
-};
-
-
-
 const getCurrentUser = (req, res) => {
   const userId = req.user.id;
 
@@ -524,19 +437,13 @@ const resetPassword = (req, res, next) => {
 
 const logoutUser = async (req, res, next) => {
   const userId = req.user.id;
-  console.log(userId)
   try {
     const user = await User.findByIdAndUpdate(userId, { isOnline: false });
-    console.log(user)
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
     return res.status(200).json({ message: "User logged out successfully" });
   } catch (error) {
-    console.log(err)
-
     res.status(500).json({ message: "Error logging out user", error });
   }
 };
@@ -555,6 +462,5 @@ module.exports = {
   verifyCode,
   resetPassword,
   registerUser,
-  loginUser,
   logoutUser
 };
