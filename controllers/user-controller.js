@@ -217,7 +217,7 @@ function updateUser(user, req, res) {
   user.profession = req.body.profession || user.profession;
   user.role = req.body.role || user.role;
   if (req.file) {
-    user.image = "/user_images/" + req.file.filename;
+    user.image = req.file.filename;
   }
 
   user

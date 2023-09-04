@@ -87,7 +87,7 @@ const updateProductById = (req, res, next) => {
       product.category = req.body.category || product.category;
 
       if (req.file) {
-        product.image = "/product_images/" + req.file.filename;
+        product.image = req.file.filename;
       }
 
       product
