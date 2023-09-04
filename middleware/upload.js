@@ -1,33 +1,40 @@
 const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const path = require('path');
+require("dotenv").config();
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    try {
-      let uploadPath;
-      if (file.fieldname === 'userImage') {
-        uploadPath = './uploads/user_images';
-      } else if (file.fieldname === 'productImage') {
-        uploadPath = './uploads/product_images';
-      } else if (file.fieldname === 'contactImage') {
-        uploadPath = './uploads/contact-images';
-      } else {
-        throw new Error('Invalid fieldname');
-      }
-      cb(null, uploadPath);
-    } catch (err) {
-      cb(err);
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: (req, file) => {
+    let folderName;
+    if (file.fieldname === 'userImage') {
+      folderName = 'user_images';
+    } else if (file.fieldname === 'productImage') {
+      folderName = 'product_images';
+    } else if (file.fieldname === 'contactImage') {
+      folderName = 'contact_images';
+    } else {
+      return new Error('Invalid fieldname');
     }
-  },
-  filename: (req, file, cb) => {
-    try {
-      let ext = path.extname(file.originalname);
-      cb(null, `${file.fieldname}--${Date.now()}${ext}`);
-    } catch (err) {
-      cb(err);
-    }
+
+    const originalFilename = file.originalname;
+    const extension = path.extname(originalFilename);
+
+    return {
+      folder: folderName,
+      format: 'jpg',
+      public_id: `${file.fieldname}--${Date.now()}`,
+    };
   },
 });
+
 
 const imageFileFilter = (req, file, cb) => {
   try {
@@ -40,12 +47,10 @@ const imageFileFilter = (req, file, cb) => {
   }
 };
 
-// configure multer
 const upload = multer({
-  storage,
+  storage: storage,
   fileFilter: imageFileFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-
-module.exports = upload
+module.exports = upload;

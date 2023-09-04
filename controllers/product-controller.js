@@ -53,7 +53,7 @@ const createProduct = (req, res, next) => {
   }
 
   if (req.file) {
-    product.image = "/product_images/" + req.file.filename;
+    product.image = req.file.filename;
   }
 
   Product.create(product)
