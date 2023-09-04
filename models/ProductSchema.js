@@ -19,6 +19,10 @@ const ProductSchema = mongoose.Schema({
     image: {
         type: String,
     },
+    slug: {
+        type: String,
+        unique: true
+    },
     reviews: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Review',
@@ -27,7 +31,9 @@ const ProductSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     }],
-    
+
 }, { timestamps: true });
+
+
 
 module.exports = mongoose.model('Product', ProductSchema);

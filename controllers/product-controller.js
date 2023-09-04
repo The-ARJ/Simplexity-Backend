@@ -1,28 +1,56 @@
-const Product = require("../models/ProductSchema");
+const slugify = require('slugify'); // Import slugify at the top of your controller file
 
+const Product = require("../models/ProductSchema");
 const getAllProducts = (req, res, next) => {
-  Product.find({})
-    .then((products) => {
-      res.status(200).json({
-        success: true,
-        message: "Products retrieved successfully",
-        data: products,
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  let query = {};
+
+  if (req.query.query) {
+    query.name = { $regex: new RegExp(req.query.query, 'i') };
+  }
+
+  // First get the total number of matching products
+  Product.countDocuments(query).then(total => {
+
+    // Then get the products for the requested page
+    return Product.find(query)
+      .skip(skip)
+      .limit(limit)
+      .then(products => {
+
+        // Finally, return both the products and the total count
+        res.status(200).json({
+          success: true,
+          message: "Products retrieved successfully",
+          data: products,
+          total,
+        });
+
       });
-    })
-    .catch((error) => {
-      res.status(500).json({
-        success: false,
-        message: "Error retrieving products",
-        error,
-      });
+  }).catch(error => {
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving products",
+      error,
     });
+  });
 };
+
+
 
 const createProduct = (req, res, next) => {
   let product = {
     ...req.body,
     owner: req.user.id,
   };
+
+  // Generate slug based on product name
+  if (product.name) {
+    product.slug = slugify(product.name, { lower: true });
+  }
 
   if (req.file) {
     product.image = "/product_images/" + req.file.filename;
@@ -33,6 +61,7 @@ const createProduct = (req, res, next) => {
       res.status(201).json({
         message: "Product created successfully",
         product: createdProduct,
+        slug: createdProduct.slug  // Send slug back in response
       });
     })
     .catch((error) => {
@@ -43,6 +72,7 @@ const createProduct = (req, res, next) => {
       });
     });
 };
+
 const updateProductById = (req, res, next) => {
   Product.findById(req.params.product_id)
     .then((product) => {
@@ -131,6 +161,25 @@ const deleteProductById = (req, res, next) => {
       res.status(500).json({ message: "Error deleting product", error });
     });
 };
+const getProductBySlug = (req, res, next) => {
+  const slug = req.params.slug; // Get the slug from the request parameters
+
+  // Search for the product with the given slug in the database
+  Product.findOne({ slug: slug })
+    .then((product) => {
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      res.json({
+        success: true,
+        message: "Product retrieved successfully",
+        data: product,
+      });
+    })
+    .catch((error) => {
+      res.status(500).json({ message: "Error retrieving product", error });
+    });
+};
 
 module.exports = {
   getAllProducts,
@@ -139,4 +188,5 @@ module.exports = {
   getProductById,
   updateProductById,
   deleteProductById,
+  getProductBySlug
 };
