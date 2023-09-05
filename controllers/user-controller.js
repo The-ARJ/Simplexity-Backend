@@ -333,9 +333,8 @@ const deleteUserById = (req, res, next) => {
 
 
 
-const forgotPassword = async (req, res, next) => {
+const VerifyEmail = async (req, res, next) => {
   const { email } = req.body;
-  console.log(email)
   try {
     // Generate a verification code
     const verificationCode = generateVerificationCode();
@@ -458,7 +457,7 @@ module.exports = {
   deleteUserById,
   getCurrentUser,
   updatePassword,
-  forgotPassword,
+  VerifyEmail,
   verifyCode,
   resetPassword,
   registerUser,

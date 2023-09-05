@@ -14,7 +14,7 @@ const authController = require("../controllers/auth-controller");
 const checkLastPasswordChange = require("../middleware/passwordChangePrompt");
 
 router.post("/", upload.single("userImage"), userController.registerUser)
-router.post("/login/user",  authController.loginUser);
+router.post("/login/user", authController.loginUser);
 router.route("/current/user").get(verifyUser, checkLastPasswordChange, userController.getCurrentUser);
 router.post("/current/user/logout", verifyUser, userController.logoutUser);
 
@@ -23,7 +23,7 @@ router
   .get(verifyUser, userController.getAllUsers)
   .put((req, res) => res.status(501).json({ msg: "Not implemented" }))
   .delete(verifySuperAdmin, userController.deleteAllUsers);
-router.route("/forgot-password").post(userController.forgotPassword);
+router.route("/verify-email").post(userController.VerifyEmail);
 router.route("/verify-code").post(userController.verifyCode);
 router.route("/reset-password").post(userController.resetPassword);
 router.route("/update-password/:user_id").put(userController.updatePassword);
