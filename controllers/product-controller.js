@@ -1,9 +1,8 @@
-const slugify = require('slugify'); // Import slugify at the top of your controller file
-
+const slugify = require('slugify');
 const Product = require("../models/ProductSchema");
 const getAllProducts = (req, res, next) => {
   const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 10;
+  const limit = Number(req.query.limit);
   const skip = (page - 1) * limit;
 
   let query = {};
